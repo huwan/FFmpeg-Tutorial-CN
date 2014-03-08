@@ -11,7 +11,7 @@ How to Write a Video Player in Less Than 1000 Lines
 
 ----------
 
-教程英文原文由Stephen Dranger (dranger at gmail dot com)写成，并发布在http://dranger.com/ffmpeg/ffmpeg.html，中文版原始翻译出处不详，本文档参考百度文库http://wenku.baidu.com/view/2a30ffef0975f46527d3e1ac.html 版本进行校正和重排。教程中有些内容已经过时了，代码中使用的API 有些已经被FFmpeg废弃了，不过有一些开发者[更新了教程的代码](https://github.com/chelyaev/ffmpeg-tutorial)至最近的FFmpeg版本，因此用来作为开发者的入门教程仍不失其价值。
+教程英文原文由Stephen Dranger (dranger at gmail dot com)写成，并发布在http://dranger.com/ffmpeg/ffmpeg.html  ，中文版原始翻译出处不详，本文档参考百度文库 http://wenku.baidu.com/view/2a30ffef0975f46527d3e1ac.html  版本进行校正和重排。教程中有些内容已经过时了，代码中使用的API 有些已经被FFmpeg废弃了，不过有一些开发者[更新了教程的代码](https://github.com/chelyaev/ffmpeg-tutorial)至最近的FFmpeg版本，因此用来作为开发者的入门教程仍不失其价值。
 
 
 原文的版权声明：
