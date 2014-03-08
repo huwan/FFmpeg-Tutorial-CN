@@ -1,0 +1,211 @@
+﻿\chapter{同步音频}
+\label{ch6}
+\section{同步音频}
+现在我们已经有了一个比较像样的播放器。所以让我们看一下还有哪些零碎的东西没处理。上次，我们掩饰了一点同步问题，也就是同步音频到视频而不是其它的同步方式。我们将采用和视频一样的方 式：做一个内部视频时钟来记录视频线程播放了多久，然后同步音频到上面去。后面我们也来看一下如何推而广之把音频和视频都同步到外部时钟。
+\section{实现一个视频时钟}
+现在我们要生成一个类似于上次我们的声音时钟的视频时钟：一个给出当前视频播放时间的内部值。开始，你可能会想这和使用上一帧的时间戳来更新定时器一样简单。但是，不要忘了视频帧之间的时间间隔是很长的，以毫秒为计量的。解决办法是跟踪另外一个值：我们在设置上一帧时间戳的时候的时间值。于是当前视频时间值就是PTS_of_last_frame + (current_time -time_elapsed_since_PTS_value_was_set)。这种解决方式与我们在函数get_audio_clock 中的方式很类似。
+
+所在在我们的大结构体中，我们将放上一个双精度浮点变量video_current_pts和一个64位宽整型变量video_current_pts_time。时钟更新将被放在video_refresh_timer函数中。
+
+\begin{lstlisting}
+void video_refresh_timer(void *userdata) {
+
+  /* ... */
+
+  if(is->video_st) {
+    if(is->pictq_size == 0) {
+      schedule_refresh(is, 1);
+    } else {
+      vp = &is->pictq[is->pictq_rindex];
+
+      is->video_current_pts = vp->pts;
+      is->video_current_pts_time = av_gettime();
+\end{lstlisting}
+不要忘记在stream_component_open 函数中初始化它：
+\begin{lstlisting}
+  is->video_current_pts_time = av_gettime();
+\end{lstlisting}
+现在我们需要一种得到信息的方式：
+\begin{lstlisting}
+double get_video_clock(VideoState *is) {
+  double delta;
+
+  delta = (av_gettime() - is->video_current_pts_time) / 1000000.0;
+  return is->video_current_pts + delta;
+}
+\end{lstlisting}
+\section{提取时钟}
+但是为什么要强制使用视频时钟呢？我们更改视频同步代码以致于音频和视频不会试着去相互同步。想像一下我们 让它像ffplay一样有一个命令行参数。所以让我们抽象一样这件事情：我们将做一个新的封装函数get_master_clock，用来检测av_sync_type变量然后决定调用get_audio_clock还是get_video_clock 或者其它的想使用的获得时钟的函数。我们甚至可以使用电脑时钟，这个函数我们叫做get_external_clock：
+
+\begin{lstlisting}
+enum {
+  AV_SYNC_AUDIO_MASTER,
+  AV_SYNC_VIDEO_MASTER,
+  AV_SYNC_EXTERNAL_MASTER,
+};
+
+#define DEFAULT_AV_SYNC_TYPE AV_SYNC_VIDEO_MASTER
+
+double get_master_clock(VideoState *is) {
+  if(is->av_sync_type == AV_SYNC_VIDEO_MASTER) {
+    return get_video_clock(is);
+  } else if(is->av_sync_type == AV_SYNC_AUDIO_MASTER) {
+    return get_audio_clock(is);
+  } else {
+    return get_external_clock(is);
+  }
+}
+main() {
+...
+  is->av_sync_type = DEFAULT_AV_SYNC_TYPE;
+...
+}
+\end{lstlisting}
+
+\section{同步音频}
+
+现在是最难的部分：同步音频到视频时钟。我们的策略是测量声音的位置，把它与视频时间比较然后算出我们需要修正多少的样本数，也就是说：我们是否需要通过丢弃样本的方式来加速播放还是需要通过插值样本的方式来放慢播放？我们将在每次处理声音样本的时候运行一个synchronize_audio的函数来正确的收缩或者扩展声音样本。然而，我们不想在每次发现有偏差的时候都进行同步，因为这样会使同步音频多于视频包。所以我们为函数synchronize_audio设置一个最小连续值来限定需要同步的时刻，这样我们就不会总是在调整了。当然，就像上次那样，“失去同步”意味着声音时钟和视频时钟的差异大于我们的阈值。
+
+所以我们将使用一个分数系数，叫c，所以现在可以说我们得到了N个失去同步的声音样本。失去同步的数量可能会有很多变化，所以我们要计算一下失去同步的长度的均值。例如，第一次调用的时候，显示出来我们失去同步的长度为40ms，下次变为50ms等等。但是我们不会使用一个简单的均值，因为距离现在最近的值比靠前的值要重要的多。所以我们将使用一个分数系统，叫c，然后用这样的公式来计算差异：diff_sum = new_diff + diff_sum*c。当我们准备好去找平均差异的时候，我们用简单的计算方式：avg_diff = diff_sum * (1-c)。
+
+\marginpar{\rule[-15mm]{0.4mm}{15mm}}{
+\textbf{注意：}为什么会在这里？这个公式看来很神奇！嗯，它基本上是一个使用等比级数的加权平均值。我不知道这是否有名字（我甚至查过维基百科！），但是如果想要 更多的信息，\href{http://www.dranger.com/ffmpeg/weightedmean.html}{这里是一个解释}（或者\href{http://www.dranger.com/ffmpeg/weightedmean.txt}{weightedmean.txt} ）。}
+
+下面是我们的函数：
+\begin{lstlisting}
+/* Add or subtract samples to get a better sync, return new
+   audio buffer size */
+int synchronize_audio(VideoState *is, short *samples,
+              int samples_size, double pts) {
+  int n;
+  double ref_clock;
+
+  n = 2 * is->audio_st->codec->channels;
+
+  if(is->av_sync_type != AV_SYNC_AUDIO_MASTER) {
+    double diff, avg_diff;
+    int wanted_size, min_size, max_size, nb_samples;
+
+    ref_clock = get_master_clock(is);
+    diff = get_audio_clock(is) - ref_clock;
+
+    if(diff < AV_NOSYNC_THRESHOLD) {
+      // accumulate the diffs
+      is->audio_diff_cum = diff + is->audio_diff_avg_coef
+    * is->audio_diff_cum;
+      if(is->audio_diff_avg_count < AUDIO_DIFF_AVG_NB) {
+    is->audio_diff_avg_count++;
+      } else {
+    avg_diff = is->audio_diff_cum * (1.0 - is->audio_diff_avg_coef);
+
+       /* Shrinking/expanding buffer code.... */
+
+      }
+    } else {
+      /* difference is TOO big; reset diff stuff */
+      is->audio_diff_avg_count = 0;
+      is->audio_diff_cum = 0;
+    }
+  }
+  return samples_size;
+}
+\end{lstlisting}
+
+现在我们已经做得很好；我们已经近似的知道如何用视频或者其它的时钟来调整音频了。所以让我们来计算一下要在添加和砍掉多少样本，并且如何在“Shrinking/expanding buffer code”部分来写上代码：
+
+\begin{lstlisting}
+if(fabs(avg_diff) >= is->audio_diff_threshold) {
+  wanted_size = samples_size +
+  ((int)(diff * is->audio_st->codec->sample_rate) * n);
+  min_size = samples_size * ((100 - SAMPLE_CORRECTION_PERCENT_MAX)
+                             / 100);
+  max_size = samples_size * ((100 + SAMPLE_CORRECTION_PERCENT_MAX)
+                             / 100);
+  if(wanted_size < min_size) {
+    wanted_size = min_size;
+  } else if (wanted_size > max_size) {
+    wanted_size = max_size;
+  }
+\end{lstlisting}
+
+记住audio_length * (sample_rate * \# of channels * 2)就是audio_length秒时间的声音的样本数。所以，我们想要的样本数就是我们根据声音偏移添加或者减少后的声音样本数。我们也可以设置一个范围来限定我们一次进行修正的长度，因为如果我们改变的太多，用户会听到刺耳的声音。
+
+\section{修正样本数}
+
+现在我们要真正的修正一下声音。你可能会注意到我们的同步函数synchronize_audio返回了一个样本数，这可以告诉我们有多少个字节被送到流中。所以我们只要调整样本数为wanted_size就可以了。这会让样本更小一些。但是如果我们想让它变大，我们不能只是让样本大小变大，因为在缓冲区中没有多余的数据！所以我们必需添加上去。但是我们怎样来添加呢？最笨的办法就是试着来推算声音，所以让我们用已有的数据在缓冲的末尾添加上最后的样本。
+
+\begin{lstlisting}
+if(wanted_size < samples_size) {
+  /* remove samples */
+  samples_size = wanted_size;
+} else if(wanted_size > samples_size) {
+  uint8_t *samples_end, *q;
+  int nb;
+
+  /* add samples by copying final samples */
+  nb = (samples_size - wanted_size);
+  samples_end = (uint8_t *)samples + samples_size - n;
+  q = samples_end + n;
+  while(nb > 0) {
+    memcpy(q, samples_end, n);
+    q += n;
+    nb -= n;
+  }
+  samples_size = wanted_size;
+}
+\end{lstlisting}
+
+现在我们通过这个函数返回的是样本数。我们现在要做的是使用它：
+
+\begin{lstlisting}
+void audio_callback(void *userdata, Uint8 *stream, int len) {
+
+  VideoState *is = (VideoState *)userdata;
+  int len1, audio_size;
+  double pts;
+
+  while(len > 0) {
+    if(is->audio_buf_index >= is->audio_buf_size) {
+      /* We have already sent all our data; get more */
+      audio_size = audio_decode_frame(is, is->audio_buf, sizeof(is->audio_buf), &pts);
+      if(audio_size < 0) {
+    /* If error, output silence */
+    is->audio_buf_size = 1024;
+    memset(is->audio_buf, 0, is->audio_buf_size);
+      } else {
+    audio_size = synchronize_audio(is, (int16_t *)is->audio_buf,
+                       audio_size, pts);
+    is->audio_buf_size = audio_size;
+\end{lstlisting}
+
+我们要做的是把函数synchronize_audio 插入进去。（同时，保证在初始化上面
+变量的时候检查一下代码，这些我没有赘述）。
+
+结束之前的最后一件事情：我们需要添加一个if 语句来保证我们不会在视频为
+主时钟的时候也来同步视频。
+\begin{lstlisting}
+if(is->av_sync_type != AV_SYNC_VIDEO_MASTER) {
+  ref_clock = get_master_clock(is);
+  diff = vp->pts - ref_clock;
+
+  /* Skip or repeat the frame. Take delay into account
+     FFPlay still doesn't "know if this is the best guess." */
+  sync_threshold = (delay > AV_SYNC_THRESHOLD) ? delay :
+                    AV_SYNC_THRESHOLD;
+  if(fabs(diff) < AV_NOSYNC_THRESHOLD) {
+    if(diff <= -sync_threshold) {
+      delay = 0;
+    } else if(diff >= sync_threshold) {
+      delay = 2 * delay;
+    }
+  }
+}
+\end{lstlisting}
+
+添加后就可以了。要保证整个程序中我没有赘述的变量都被初始化过了。然后编译它：
+\begin{lstlisting}
+gcc -o tutorial06 tutorial06.c -lavutil -lavformat -lavcodec -lz -lm`sdl-config --cflags --libs`
+\end{lstlisting}
+然后你就可以运行它了。
+
+下次我们要做的是让你可以让电影快退和快进。

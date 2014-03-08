@@ -1,0 +1,160 @@
+﻿%编译环境：Windows 7+CTeX_2.9.2.164_Full+XeLaTeX
+%文档编码：UTF-8
+\documentclass[12pt,a4paper,landscape,fancyhdr,fntef,oneside]{ctexbook}
+%\usepackage[boldfont,slantfont,CJKaddspaces,CJKchecksingle]{xeCJK} 	
+\setCJKmainfont[BoldFont={STZhongsong}, ItalicFont={Adobe Kaiti Std}]{SimSun}
+\setCJKmonofont{Adobe Fangsong Std}
+\setCJKfamilyfont{song}{Adobe Song Std}
+
+\setmainfont{Times New Roman}           % 英文缺省字体
+\setsansfont{Arial}                                 % 英文无衬线字体
+\setmonofont{Courier New}                   % 英文打字机（等宽）字体
+
+\usepackage{verbatim}
+\usepackage{fancyvrb}
+\usepackage{geometry}
+\usepackage{underscore} %处理下划线（如变量名称中带下划线）
+\usepackage{amsmath,amsfonts,amssymb}	% Math packages
+\usepackage{tikz}
+\usepackage{tabularx}
+\usepackage[CJKbookmarks, colorlinks, bookmarksnumbered=true,pdfstartview=FitH,linkcolor=black,citecolor=black]{hyperref}
+
+\usepackage{shortvrb}
+\MakeShortVerb{\|}
+
+\usepackage{graphicx}
+% 设置图形文件的搜索路径
+\graphicspath{{chapter/}{figure/}}
+
+
+\newcommand\cs{
+\begin{center}
+  \S
+\end{center}
+}
+
+\DefineVerbatimEnvironment{code}{Verbatim}%
+  {frame=lines,framerule=0.5mm,rulecolor=\color{black},%
+  fontseries=tt,xleftmargin=4mm,tabsize=4,numbers=left,numbersep=1.5mm}
+\renewenvironment{quote}
+                {\kaishu
+                 \list{}{\rightmargin   2em
+                         \listparindent 2em
+                         \itemindent    2em
+                         \parsep        0em}
+                 \item\relax}
+                {\endlist}
+
+\usepackage{listings}
+\lstset{
+language=C,
+extendedchars=false,
+frame=lines,%none|leftline|topline|bottomline|lines|single|shadowbox
+framerule=0.3mm,
+rulesepcolor=\color{red!20!green!20!blue!20},
+basicstyle=\ttfamily\footnotesize,
+showstringspaces=false,
+xleftmargin=2em,
+xrightmargin=2em
+}
+
+\CTEXsetup[name={指导,}]{chapter}
+\CTEXsetup[number={\arabic{chapter}}]{chapter}
+\setcounter{chapter}{0}%-1:从0开始编号
+\renewcommand\thesection{\arabic{section}}
+\CTEXsetup[format+={\flushleft}]{section}
+
+%%%%% Definitions
+%%% Define a new command that prints the title only
+\makeatletter							% Begin definition
+\def\printtitle{%						% Define command: \printauthor
+    {\huge {\@title}\par}}		% Typesetting
+\makeatother							% End definition
+
+\title{
+\hfill{\small \textbf{How to Write a Video Player in
+Less Than 1000 Lines}}\\
+\hfill \textbf{An ffmpeg and SDL Tutorial}\\
+\hfill \textbf{如何用FFmpeg编写一个简单播放器}\\
+\hfill {\large\kaishu 中文版}}
+
+%%% Define a new command that prints the author(s) only
+\makeatletter							% Begin definition
+\def\printauthor{%					% Define command: \printtitle
+    {\large \@author}}				% Typesetting
+\makeatother							% End definition
+
+\author{
+		\hfill Stephen Dranger \quad 著\\	
+		\hfill 不详\quad 译\\	
+}
+
+\renewcommand\maketitle{%
+  \newpage
+  \thispagestyle{empty}
+  %%% Top of the page: Author, Title and Abstact
+
+%\begin{minipage}{0.48\linewidth}
+	
+	%\vspace{.2\textheight}
+	\includegraphics[height=0.1314\textheight]{FFmpegnewlogo.png}\\	%Nekomata.jpg
+
+%\end{minipage} %\hspace{0pt}
+%
+%\begin{minipage}{0.02\linewidth}
+%	\vspace{.2\textheight}
+%	\rule{3pt}{0.6\textheight}
+%\end{minipage} %\hspace{0pt}
+%
+\begin{minipage}{\linewidth}
+\begin{flushleft}
+\vspace{.2\textheight}
+\printtitle
+\vspace{.2\textheight}
+\printauthor
+\end{flushleft}
+\end{minipage}
+%\vspace{20pt}		% Add some vertical spacing to seperate the abstract from the rest of the article
+\clearpage}
+\renewcommand\contentsname{目\hspace{2em}录}
+
+\begin{document}
+\maketitle
+
+\newpage
+\thispagestyle{empty}
+{\hfil \huge \textbf{前\hspace{2em}言}}\par
+\vspace{.1\textheight}
+
+教程英文原文由Stephen Dranger\footnote{dranger@gmail.com} 写成，并发布在http://dranger.com/ffmpeg/ffmpeg.html，中文版原始翻译出处不详，本文档参考百度文库http://wenku.baidu.com/view/2a30ffef0975f46527d3e1ac.html 版本进行校正和重排。教程中有些内容已经过时了，代码中使用的API 有些已经被FFmpeg废弃了，不过有一些开发者更新了教程的代码\footnote{https://github.com/chelyaev/ffmpeg-tutorial}至最近的FFmpeg版本，因此用来作为开发者的入门教程仍不失其价值。
+
+\vspace{1em}
+原文的版权声明：
+\begin{quote}
+\noindent This work is licensed under the Creative Commons Attribution-Share Alike 2.5 License. To view a copy of this license, visit http://creativecommons.org/licenses/by-sa/2.5/ or send a letter to Creative Commons, 543 Howard Street, 5th Floor, San Francisco, California, 94105, USA.
+
+\noindent Code examples are based off of FFplay, Copyright (c) 2003 Fabrice Bellard, and a tutorial by Martin Bohme.
+\end{quote}
+
+
+\frontmatter
+\tableofcontents
+
+\mainmatter
+
+\input{chapter/tutorial00}
+\input{chapter/tutorial01}
+\input{chapter/tutorial02}
+\input{chapter/tutorial03}
+\input{chapter/tutorial04}
+\input{chapter/tutorial05}
+\input{chapter/tutorial06}
+\input{chapter/tutorial07}
+\input{chapter/tutorial08}
+\input{chapter/tutorial09}
+
+
+
+%\backmatter
+
+\end{document}

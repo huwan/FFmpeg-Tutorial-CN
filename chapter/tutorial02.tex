@@ -1,0 +1,126 @@
+﻿\chapter{输出到屏幕}
+\label{ch2}
+\section{SDL 和视频}
+为了在屏幕上显示，我们将使用 SDL。SDL 是 Simple Direct Layer 的缩写。它是一个出色的多媒体库，适用于多平台，并且被用在许多工程中。你可以从它的官方网站的网址 http://www.libsdl.org/上来得到这个库的源代码或者如果有可能的话你可以直接下载开发包到你的操作系统中。按照这个指导，你将需要编译这个库。（剩下的几个指导中也是一样）
+
+SDL库中有许多种方式来在屏幕上绘制图形，而且它有一个特殊的方式来在屏幕上显示图像――这种方式叫做YUV覆盖。YUV（从技术上来讲并不叫YUV而是叫做YCbCr）是一种类似于RGB方式的存储原始图像的格式。粗略的讲，Y是亮度分量，U和V是色度分量。（这种格式比RGB 复杂的多，因为很多的颜色信息被丢弃了，而且你可以每2个Y有1个U和1个V）。SDL的YUV覆盖使用一组原始的YUV数据并且在屏幕上显示出他们。它可以允许4种不同的YUV格式，但是其中的YV12是最快的一种。还有一个叫做YUV420P的YUV格式，它和YV12是一样的，除了U和V分量的位置被调换了以外。 420意味着它以4：2：0 的比例进行了二次抽样，基本上就意味着1个颜色分量对应着4个亮度分量。所以它的色度信息只有原来的1/4。这是一种节省带宽的好方式，因为人眼感觉不到这种变化。在名称中的P表示这种格式是平面的――简单的说就是Y，U和V 分量分别在不同的数组中。FFMPEG可以把图像格式转换为YUV420P，但是现在很多视频流的格式已经是YUV420P的了或者可以被很容易的转换成YUV420P格式。
+
+于是，我们现在计划把指导1中的SaveFrame()函数替换掉，让它直接输出我们的帧到屏幕上去。但一开始我们必需要先看一下如何使用SDL库。首先我们必需先包含SDL库的头文件并且初始化它。
+
+\begin{lstlisting}
+#include <SDL.h>
+#include <SDL_thread.h>
+
+if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER)) {
+  fprintf(stderr, "Could not initialize SDL - %s\n", SDL_GetError());
+  exit(1);
+}
+\end{lstlisting}
+
+SDL_Init()函数告诉了SDL库，哪些特性我们将要用到。当然SDL_GetError()是一个用来手工除错的函数。
+
+\section{创建一个显示}
+
+现在我们需要在屏幕上的一个地方放上一些东西。在SDL中显示图像的基本区域叫做\textbf{surface}。
+
+\begin{lstlisting}
+SDL_Surface *screen;
+
+screen = SDL_SetVideoMode(pCodecCtx->width, pCodecCtx->height, 0, 0);
+if(!screen) {
+  fprintf(stderr, "SDL: could not set video mode - exiting\n");
+  exit(1);
+}
+\end{lstlisting}
+
+这就创建了一个给定高度和宽度的屏幕。下一个选项是屏幕的颜色深度――0 表示使用和当前一样的深度。（这个在OS X系统上不能正常工作，原因请看源代码）现在我们在屏幕上来创建一个YUV 覆盖以便于我们输入视频上去：
+
+\begin{lstlisting}
+SDL_Overlay     *bmp;
+
+bmp = SDL_CreateYUVOverlay(pCodecCtx->width, pCodecCtx->height,
+                           SDL_YV12_OVERLAY, screen);
+\end{lstlisting}
+
+正如前面我们所说的，我们使用YV12来显示图像。
+
+\section{显示图像}
+
+前面那些都是很简单的。现在我们需要来显示图像。让我们看一下是如何来处理完成后的帧的。我们将原来对RGB处理的方式，并且替换SaveFrame()为显示到屏幕上的代码。为了显示到屏幕上，我们将先建立一个AVPicture结构体并且设置其数据指针和行尺寸来为我们的YUV 覆盖服务：
+
+\begin{lstlisting}
+ if(frameFinished) {
+    SDL_LockYUVOverlay(bmp);
+
+    AVPicture pict;
+    pict.data[0] = bmp->pixels[0];
+    pict.data[1] = bmp->pixels[2];
+    pict.data[2] = bmp->pixels[1];
+
+    pict.linesize[0] = bmp->pitches[0];
+    pict.linesize[1] = bmp->pitches[2];
+    pict.linesize[2] = bmp->pitches[1];
+
+    // Convert the image into YUV format that SDL uses
+    img_convert(&pict, PIX_FMT_YUV420P,
+                    (AVPicture *)pFrame, pCodecCtx->pix_fmt,
+            pCodecCtx->width, pCodecCtx->height);
+
+    SDL_UnlockYUVOverlay(bmp);
+  }
+\end{lstlisting}
+
+首先，我们锁定这个覆盖，因为我们将要去改写它。这是一个避免以后发生问题的好习惯。正如前面所示的，这个AVPicture结构体有一个数据指针指向一个有4个元素的指针数据。由于我们处理的是YUV420P，所以我们只需要3个通道即只要三组数据。其它的格式可能需要第四个指针来表示alpha通道或者其它参数。行尺寸正如它的名字表示的意义一样。在YUV 覆盖中相同功能的结构体是像素pixel和程度pitch。（程度pitch是在SDL里用来表示指定行数据宽度的值）。所以我们现在做的是让我们的覆盖中的pict.data 中的三个指针有一个指向必要的空间的地址。类似的，我们可以直接从覆盖中得到行尺寸信息。像前面一样我们使用img_convert来把格式转换成PIX_FMT_YUV420P。
+
+\section{绘制图像}
+
+但我们仍然需要告诉SDL 如何来实际显示我们给的数据。我们也会传递一个表明电影位置、宽度、高度和缩放大小的矩形参数给SDL 的函数。这样，SDL为我们做缩放并且它可以通过显卡的帮忙来进行快速缩放。
+
+\begin{lstlisting}
+SDL_Rect rect;
+
+  if(frameFinished) {
+    /* ... code ... */
+    // Convert the image into YUV format that SDL uses
+    img_convert(&pict, PIX_FMT_YUV420P,
+                    (AVPicture *)pFrame, pCodecCtx->pix_fmt,
+            pCodecCtx->width, pCodecCtx->height);
+
+    SDL_UnlockYUVOverlay(bmp);
+    rect.x = 0;
+    rect.y = 0;
+    rect.w = pCodecCtx->width;
+    rect.h = pCodecCtx->height;
+    SDL_DisplayYUVOverlay(bmp, &rect);
+  }
+\end{lstlisting}
+
+现在我们的视频显示出来了！
+
+让我们再花一点时间来看一下SDL的特性：它的事件驱动系统。SDL被设置成当你在SDL中点击或者移动鼠标或者向它发送一个信号它都将产生一个事件的驱动方式。如果你的程序想要处理用户输入的话，它就会检测这些事件。你的程序也可以产生事件并且传递给SDL事件系统。当使用SDL进行多线程编程的时候，这相当有用，这方面代码我们可以在指导4中看到。在这个程序中，我们将在处理完包以后就立即轮询事件。现在而言，我们将处理SDL_QUIT事件以便于我们退出：
+
+\begin{lstlisting}
+SDL_Event       event;
+
+    av_free_packet(&packet);
+    SDL_PollEvent(&event);
+    switch(event.type) {
+    case SDL_QUIT:
+      SDL_Quit();
+      exit(0);
+      break;
+    default:
+      break;
+    }
+\end{lstlisting}
+
+让我们去掉旧的冗余代码，开始编译。如果你使用的是Linux或者其变体，使用SDL库进行编译的最好方式为：
+\begin{lstlisting}
+gcc -o tutorial02 tutorial02.c -lavutil -lavformat -lavcodec -lz -lm\
+`sdl-config --cflags --libs`
+\end{lstlisting}
+
+
+这里的sdl-config命令会打印出用于gcc编译的包含正确SDL库的适当参数。为了进行编译，在你自己的平台你可能需要做的有点不同：请查阅一下SDL文档中关于你的系统的那部分。一旦可以编译，就马上运行它。
+
+当运行这个程序的时候会发生什么呢？电影简直跑疯了！实际上，我们只是以我们能从文件中解码帧的最快速度显示了所有的电影的帧。现在我们没有任何代码来计算出我们什么时候需要显示电影的帧。最后（在指导5），我们将花足够的时间来探讨同步问题。但一开始我们会先忽略这个，因为我们有更加重要的事情要处理：音频！
