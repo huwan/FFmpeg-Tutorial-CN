@@ -14,7 +14,7 @@
 \end{verbatim}
 
 
-在这个程序中使用ffmpeg来处理多种媒体是相当容易的，虽然很多程序可能在对帧进行操作的时候非常的复杂。因此在这篇指导中，我们将打开一个文件，读取里面的视频流，而且我们对帧的操作将是把这个帧写到一个PPM文件中。
+在这个程序中使用ffmpeg来处理多种媒体是相当容易的，虽然很多程序可能在对帧进行操作的时候非常的复杂。因此在这篇教程中，我们将打开一个文件，读取里面的视频流，而且我们对帧的操作将是把这个帧写到一个PPM文件中。
 
 \section{打开文件}
 
@@ -74,7 +74,7 @@ if(videoStream==-1)
 pCodecCtx=pFormatCtx->streams[videoStream]->codec;
 \end{lstlisting}
 
-流中关于编解码器的信息就是被我们叫做“编解码器上下文”（codec context）的东西。这里面包含了流中所使用的关于编解码器的所有信息，现在我们有了一个指向他的指针。但是我们必需要找到真正的编解码器并且打开它：
+流中关于编解码器的信息就是被我们叫做“编解码器上下文”（codec context）的东西。这里面包含了流中所使用的关于编解码器的所有信息，现在我们有了一个指向它的指针。但是我们必需要找到真正的编解码器并且打开它：
 \begin{lstlisting}
 AVCodec *pCodec;
 
@@ -89,7 +89,7 @@ if(avcodec_open(pCodecCtx, pCodec)<0)
   return -1; // Could not open codec
 \end{lstlisting}
 
-有些人可能会从旧的指导中记得有两个关于这些代码其它部分：添加CODEC_FLAG_TRUNCATED到pCodecCtx->flags和添加一个hack来粗糙的修正帧率。这两个修正已经不在存在于ffplay.c 中。因此，我必需假设它们不再必要。我们移除了那些代码后还有一个需要指出的不同点：pCodecCtx->time_base 现在已经保存了帧率的信息。time_base是一个结构体，它里面有一个分子和分母(AVRational)。我们使用分数的方式来表示帧率是因为很多编解码器使用非整数的帧率（例如NTSC 使用29.97fps）。
+有些人可能会从旧的教程中记得有两个关于这些代码其它部分：添加CODEC_FLAG_TRUNCATED到pCodecCtx->flags和添加一个hack来粗糙的修正帧率。这两个修正已经不在存在于ffplay.c 中。因此，我必需假设它们不再必要。我们移除了那些代码后还有一个需要指出的不同点：pCodecCtx->time_base 现在已经保存了帧率的信息。time_base是一个结构体，它里面有一个分子和分母(AVRational)。我们使用分数的方式来表示帧率是因为很多编解码器使用非整数的帧率（例如NTSC 使用29.97fps）。
 
 \section{保存数据}
 
@@ -122,7 +122,7 @@ buffer=(uint8_t *)av_malloc(numBytes*sizeof(uint8_t));
 
 av_malloc是ffmpeg的malloc，用来实现一个简单的malloc的包装，这样来保证内存地址是对齐的（4字节对齐或者2字节对齐）。它并不能保护你不被内存泄漏，重复释放或者其它malloc的问题所困扰。
 
-现在我们使用avpicture_fill来把帧和我们新申请的内存来结合。关于AVPicture的结成：AVPicture结构体是AVFrame结构体的子集――AVFrame结构体的开始部分与AVPicture结构体是一样的。
+现在我们使用avpicture_fill来把帧和我们新申请的内存来结合。关于AVPicture的结成：AVPicture结构体是AVFrame结构体的子集——AVFrame 结构体的开始部分与AVPicture结构体是一样的。
 
 \begin{lstlisting}
 // Assign appropriate parts of buffer to image planes in pFrameRGB
@@ -136,7 +136,7 @@ avpicture_fill((AVPicture *)pFrameRGB, buffer, PIX_FMT_RGB24,
 
 \section{读取数据}
 
-我们将要做的是通过读取包来读取整个视频流，然后把它解码成帧，最好后转换格式并且保存。
+我们将要做的是通过读取包来读取整个视频流，然后把它解码成帧，最后转换格式并且保存。
 \begin{lstlisting}
 int frameFinished;
 AVPacket packet;
@@ -168,12 +168,12 @@ while(av_read_frame(pFormatCtx, &packet)>=0) {
 }
 \end{lstlisting}
 
-\marginpar{\rule[-15mm]{0.4mm}{15mm}}{\textbf{关于包Packets 的注释：}\small 从技术上讲一个包可以包含部分或者其它的数据，但是ffmpeg的解释器保证了我们得到的包Packets 包含的要么是完整的要么是多种完整的帧。}
+\marginpar{\rule[-15mm]{0.4mm}{15mm}}{\textbf{关于包Packets 的注释：}\small 从技术上讲一个包可以包含部分或者其它的数据，但是ffmpeg的解释器保证了我们得到的包Packets 包含的要么是完整的要么是多个完整的帧。}
 
 
-这个循环过程是比较简单的：av_read_frame()读取一个包并且把它保存到AVPacket结构体中。注意我们仅仅申请了一个包的结构体 ――ffmpeg为我们申请了内部的数据的内存并通过packet.data指针来指向它。这些数据可以在后面通过av_free_packet()来释放。函数avcodec_decode_video()把包转换为帧。然而当解码一个包的时候，我们可能没有得到我们需要的关于帧的信息。因此，当我们得到下一帧的时候，avcodec_decode_video()为我们设置了帧结束标志frameFinished。最后，我们使用img_convert()函数来把帧从原始格式（pCodecCtx->pix_fmt）转换成为RGB格式。要记住，你可以把一个AVFrame结构体的指针转换为AVPicture 结构体的指针。最后，我们把帧和高度宽度信息传递给我们的SaveFrame 函数。
+这个循环过程是比较简单的：av_read_frame()读取一个包并且把它保存到AVPacket结构体中。注意我们仅仅申请了一个包的结构体——ffmpeg 为我们申请了内部的数据的内存并通过packet.data指针来指向它。这些数据可以在后面通过av_free_packet()来释放。函数avcodec_decode_video()把包转换为帧。然而当解码一个包的时候，我们可能没有得到我们需要的关于帧的信息。因此，当我们得到下一帧的时候，avcodec_decode_video()为我们设置了帧结束标志frameFinished。最后，我们使用img_convert()函数来把帧从原始格式（pCodecCtx->pix_fmt）转换成为RGB格式。要记住，你可以把一个AVFrame结构体的指针转换为AVPicture 结构体的指针。最后，我们把帧和高度宽度信息传递给我们的SaveFrame 函数。
 
-现在我们需要做的是让SaveFrame函数能把RGB信息定稿到一个PPM格式的文件中。我们将生成一个简单的PPM格式文件，请相信，它是可以工作的。
+现在我们需要做的是让SaveFrame函数能把RGB信息写入到一个PPM格式的文件中。我们将生成一个简单的PPM格式文件，请相信，它是可以工作的。
 
 \begin{lstlisting}
 void SaveFrame(AVFrame *pFrame, int width, int height, int iFrame) {
@@ -220,7 +220,7 @@ return 0;
 
 你会注意到我们使用av_free来释放我们使用avcode_alloc_fram和av_malloc来分配的内存。
 
-就是这些代码！下面，我们将使用Linux 或者其它类似的平台，你将运行：
+就这些！下面，我们将使用Linux 或者其它类似的平台，运行：
 \begin{lstlisting}
 gcc -o tutorial01 tutorial01.c -lavutil -lavformat -lavcodec -lz -lavutil -lm
 \end{lstlisting}

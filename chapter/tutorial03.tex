@@ -1,15 +1,15 @@
-﻿\chapter{播放声音}
+﻿\chapter{播放音频}
 \label{ch3}
 \section{音频}
-现在我们要来播放声音。SDL也为我们准备了输出声音的方法。函数SDL_OpenAudio()本身就是用来打开声音设备的。它使用一个叫做SDL_AudioSpec 结构体作为参数，这个结构体中包含了我们将要输出的音频的所有信息。
+现在我们要来播放音频。SDL也为我们准备了输出音频的方法。函数SDL_OpenAudio()本身就是用来打开音频设备的。它使用一个叫做SDL_AudioSpec 结构体作为参数，这个结构体中包含了我们将要输出的音频的所有信息。
 
-在我们展示如何建立之前，让我们先解释一下电脑是如何处理音频的。数字音频是由一长串的\textbf{样本}{samples}流组成的。每个样本表示声音波形中的一个值。声音按照一个特定的\textbf{采样率}{sample rate}来进行录制，采样率表示以多快的速度来播放这段样本流，它的表示方式为每秒多少次采样。例如22050 和44100的采样率就是电台和CD常用的 采样率。此外，大多音频有不只一个通道来表示立体声或者环绕。例如，如果采样是立体声，那么每次的采样数就为2个。当我们从一个电影文件中等到数据的时候，我们不知道我们将得到多少个样本，但是ffmpeg 将不会给我们部分的样本――这意味着它将不会把立体声分割开来。
+在我们展示如何建立之前，让我们先解释一下电脑是如何处理音频的。数字音频是由一长串的\textbf{样本}（samples）流组成的。每个样本表示音频波形中的一个值。音频按照一个特定的\textbf{采样率}{sample rate}来进行录制，采样率表示以多快的速度来播放这段样本流，它的表示方式为每秒多少次采样。例如22050 和44100的采样率就是电台和CD常用的采样率。此外，大多音频有不只一个通道来表示立体声或者环绕。例如，如果采样是立体声，那么每次的采样数就为2个。当我们从一个电影文件中得到数据的时候，我们不知道我们将得到多少个样本，但是ffmpeg 将不会给我们部分的样本——这意味着它将不会把立体声分割开来。
 
-SDL播放声音的方式是这样的：你先设置声音的选项：采样率（在SDL的结构体中被叫做freq的表示\textbf{频率}（frequency）），声音通道数和其它的参数，然后我们设置一个回调函数和一些用户数据userdata。当开始播放音频的时候，SDL将不断地调用这个回调函数并且要求它来向声音缓冲填入一个特定的数量的字节。当我们把这些信息放到SDL_AudioSpec 结构体中后，我们调用函数SDL_OpenAudio()就会打开声音设备并且给我们送回另外一个AudioSpec结构体。这个结构体是我们实际上用到的－－因为我们不能保证得到我们所要求的。
+SDL播放音频的方式是这样的：你先设置音频的选项：采样率（在SDL的结构体中叫做“freq”，代指\textbf{frequency}），通道数和其它的参数，然后我们设置一个回调函数和一些用户数据（userdata）。当开始播放音频的时候，SDL将不断地调用这个回调函数并且要求它来向音频缓冲填入特定的数量的字节。当我们把这些信息放到SDL_AudioSpec 结构体中后，调用函数SDL_OpenAudio() 就会打开音频设备并且给我们返回\emph{另一个}AudioSpec 结构体。（结构体中的）这些音频指标（specs）是我们会\emph{实际}用到的——因为我们无法保证可以得到所要求的指标。
 
 \section{设置音频}
 
-目前先把讲的记住，因为我们实际上还没有任何关于声音流的信息。让我们回过头来看一下我们的代码，看我们是如何找到视频流的，同样我们也可以找到声音流。
+目前先把讲的记住，因为我们实际上还没有任何关于音频流的信息。让我们回过头来看一下我们的代码，看我们是如何找到视频流的，同样我们也可以找到音频流。
 
 \begin{lstlisting}
 // Find the first video stream
@@ -59,25 +59,25 @@ if(SDL_OpenAudio(&wanted_spec, &spec) < 0) {
 
 让我们浏览一下这些：
 \begin{itemize}
-  \item freq前面所讲的采样率
+  \item freq：前面所讲的采样率
 
-  \item format告诉SDL我们将要给的格式。在“S16SYS”中的S表示有符号的signed，16表示每个样本是16位长的，SYS表示大小头的顺序是与使用的系统相同的。这些格式是由avcodec_decode_audio2为我们给出来的输入音频的格式。
+  \item format：告诉SDL我们将要给的格式。“S16SYS”中的S表示有符号的signed，16表示每个样本是16位长的，SYS表示大小端的顺序是与使用的系统相同的。这些格式是由avcodec_decode_audio2为我们给出来的输入音频的格式。
 
-  \item channels声音的通道数
+  \item channels：音频的通道数
 
-  \item silence这是用来表示静音的值。因为声音采样是有符号的，所以0当然就是这个值。
+  \item silence：这是用来表示静音的值。因为音频采样是有符号的，所以0当然就是这个值。
 
-  \item samples这是当我们想要更多声音的时候，我们想让SDL给出来的声音缓冲区的尺寸。一个比较合适的值在512到8192之间；ffplay使用1024。
+  \item samples：这是当我们想要更多音频的时候，我们想让SDL给出来的音频缓冲区的尺寸。一个比较合适的值在512到8192之间；ffplay使用1024。
 
-  \item callback这个是我们的回调函数。我们后面将会详细讨论。
+  \item callback：这个是我们的回调函数。我们后面将会详细讨论。
 
-  \item userdata这个是SDL供给回调函数运行的参数。我们将让回调函数得到整个编解码的上下文；你将在后面知道原因。
+  \item userdata：这个是SDL供给回调函数运行的参数。我们将让回调函数得到整个编解码的上下文；你将在后面知道这样做的原因。
 
 \end{itemize}
 
-最后，我们使用SDL_OpenAudio 函数来打开声音。
+最后，我们使用SDL_OpenAudio 函数来打开音频。
 
-如果你还记得前面的指导，我们仍然需要打开声音编解码器本身。这是很显然的。
+如果你还记得前面的教程，我们仍然需要打开音频编解码器本身。这是很显然的。
 
 \begin{lstlisting}
 AVCodec         *aCodec;
@@ -91,7 +91,7 @@ avcodec_open(aCodecCtx, aCodec);
 \end{lstlisting}
 \section{队列}
 
-嗯！现在我们已经准备好从流中取出声音信息。但是我们如何来处理这些信息呢？我们将会不断地从文件中得到这些包，但同时SDL 也将调用回调函数。解决方法为创建一个全局的结构体变量以便于我们从文件中得到的声音包有地方存放同时也保证SDL中的声音回调函数audio_callback能从这个地方得到声音数据。所以我们要做的是创建一个包的\textbf{队列}（queue）。在ffmpeg中有一个叫AVPacketList 的结构体可以帮助我们，这个结构体实际是一串包的链表。下面就是我们的队列结构体：
+嗯！现在我们已经准备好从流中取出音频信息。但是我们如何来处理这些信息呢？我们将会不断地从文件中得到这些包，但同时SDL 也将调用回调函数。解决方法为创建一个全局的结构体变量以便于我们从文件中得到的音频包有地方存放同时也保证SDL中的音频回调函数audio_callback能从这个地方得到音频数据。所以我们要做的是创建一个包的\textbf{队列}（queue）。在ffmpeg中有一个叫AVPacketList 的结构体可以帮助我们，这个结构体实际是一串包的链表。下面就是我们的队列结构体：
 
 \begin{lstlisting}
 typedef struct PacketQueue {
@@ -103,7 +103,7 @@ typedef struct PacketQueue {
 } PacketQueue;
 \end{lstlisting}
 
-首先，我们应当指出nb_packets是与size不一样的。size表示我们从packet->size中得到的字节数。你会注意到我们有一个互斥量mutex和一个条件变量cond在结构体里面。这是因为SDL是在一个独立的线程中来进行音频处理的。如果我们没有正确的锁定这个队列，我们有可能把数据搞乱。我们将来看一个这个队列是如何来运行的。每一个程序员应当知道如何来生成的一个队列，但是我们将把这部分也来讨论从而可以学习到SDL的函数。
+首先，我们应当指出nb_packets与size是不一样的，size表示我们从packet->size中得到的字节数。你会注意到我们有一个互斥量mutex和一个条件变量cond在结构体里面。这是因为SDL是在一个独立的线程中来进行音频处理的。如果我们没有正确的锁定这个队列，我们有可能把数据搞乱。我们来看这样一个队列实现是什么样的。每一个程序员应当知道如何来创建的一个队列，但是我们将把这部分也来讨论从而可以学习到SDL的函数。
 
 一开始我们先创建一个函数来初始化队列：
 \begin{lstlisting}
@@ -114,7 +114,7 @@ void packet_queue_init(PacketQueue *q) {
 }
 \end{lstlisting}
 
-接着我们再做一个函数来给队列中填入东西：
+接着我们再写一个函数来给队列中填入东西：
 \begin{lstlisting}
 int packet_queue_put(PacketQueue *q, AVPacket *pkt) {
 
@@ -168,7 +168,7 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block) {
     if (pkt1) {
       q->first_pkt = pkt1->next;
       if (!q->first_pkt)
-    q->last_pkt = NULL;
+        q->last_pkt = NULL;
       q->nb_packets--;
       q->size -= pkt1->pkt.size;
       *pkt = pkt1->pkt;
@@ -187,7 +187,7 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block) {
 }
 \end{lstlisting}
 
-正如你所看到的，我们已经用一个无限循环包装了这个函数以便于我们想用阻塞的方式来得到数据。我们通过使用SDL中的函数SDL_CondWait()来避免无限循环。基本上，所有的CondWait只等待从SDL_CondSignal()函数（或者SDL_CondBroadcast()函数）中发出的信号，然后再继续执行。然而，虽然看起来我们陷入了我们的互斥体中－－如果我们一直保持着这个锁，我们的函数将永远无法把数据放入到队列中去！但是，SDL_CondWait()函数也为我们做了解锁互斥量的动作然后才尝试着在得到信号后去重新锁定它。
+正如你所看到的，我们已经用一个无限循环包装了这个函数以便于我们想用阻塞的方式来得到数据。我们通过使用SDL中的函数SDL_CondWait()来避免无限循环。基本上，所有的CondWait只等待从SDL_CondSignal()函数（或者SDL_CondBroadcast()函数）中发出的信号，然后再继续执行。然而，虽然看起来我们陷入了我们的互斥体中——如果我们一直保持着这个锁，我们的函数将永远无法把数据放入到队列中去！但是，SDL_CondWait()函数也为我们做了解锁互斥量的动作然后才尝试着在得到信号后去重新锁定它。
 
 \section{意外情况}
 
@@ -246,7 +246,7 @@ while(av_read_frame(pFormatCtx, &packet)>=0) {
 
 \section{取出包}
 
-现在，让我们最后让声音回调函数audio_callback来从队列中取出包。回调函数的格式必需为void callback(void *userdata, Uint8 *stream, int len)，这里的userdata就是我们给到SDL的指针，stream是我们要把声音数据写入的缓冲区指针，len是缓冲区的大小。下面就是代码：
+我们最后再来让音频回调函数audio_callback从队列中取出包。回调函数的格式必需为void callback(void *userdata, Uint8 *stream, int len)，这里的userdata就是我们给SDL的指针，stream是我们要把音频数据写入的缓冲区指针，len是缓冲区的大小。代码如下：
 
 \begin{lstlisting}
 void audio_callback(void *userdata, Uint8 *stream, int len) {
@@ -283,10 +283,10 @@ void audio_callback(void *userdata, Uint8 *stream, int len) {
 }
 \end{lstlisting}
 
-这基本上是一个简单的从另外一个我们将要写的audio_decode_frame()函数中获取数据的循环，这个循环把结果写入到中间缓冲区，尝试着向流中写入len字节并且在我们没有足够的数据的时候会获取更多的数据或者当我们有多余数据的时候保存下来为后面使用。这个audio_buf 的大小为1.5倍的声音帧的大小以便于有一个比较好的缓冲，这个声音帧的大小是ffmpeg给出的。
+这基本上是一个简单的从另外一个我们将要写的audio_decode_frame()函数中获取数据的循环，这个循环把结果写入到中间缓冲区，尝试着向流中写入len字节并且在我们没有足够的数据的时候会获取更多的数据或者当我们有多余数据的时候保存下来为后面使用。这个audio_buf 的大小为1.5倍的音频帧的大小以便于有一个比较好的缓冲，这个音频帧的大小是ffmpeg给出的。
 
 \section{最后解码音频}
-让我们看一下解码器的真正部分：audio_decode_frame
+让我们看一下解码器的真正部分：audio_decode_frame：
 \begin{lstlisting}
 int audio_decode_frame(AVCodecContext *aCodecCtx, uint8_t *audio_buf,
                        int buf_size) {
@@ -332,7 +332,9 @@ int audio_decode_frame(AVCodecContext *aCodecCtx, uint8_t *audio_buf,
 }
 \end{lstlisting}
 
-整个过程实际上从函数的尾部开始，在这里我们调用了packet_queue_get()函数。我们从队列中取出包，并且保存它的信息。然后，一旦我们有了可以使用的包，我们就调用函数avcodec_decode_audio2()，它的功能就像它的姐妹函数avcodec_decode_video() 一样，唯一的区别是它的一个包里可能有不止一个声音帧，所以你可能要调用很多次来解码出包中所有的数据。同时也要记住进行指针audio_buf的强制转换，因为SDL给出的是8位整型缓冲指针而ffmpeg给出的数据是16位的整型指针。你应该也会注意到len1和data_size的不同，len1表示解码使用的数据的在包中的大小，data_size表示实际返回的原始声音数据的大小。
+整个过程实际上从函数的尾部开始，在这里我们调用了packet_queue_get()函数。我们从队列中取出包，并且保存它的信息。然后，一旦我们有了可以使用的包，我们就调用函数avcodec_decode_audio2()，它的功能就像它的姐妹函数avcodec_decode_video() 一样，唯一的区别是它的一个包里可能有不止一个音频帧，所以你可能要调用很多次来解码出包中所有的数据。同时也要记住进行指针audio_buf的强制转换，因为SDL给出的是8位整型缓冲指针而ffmpeg给出的数据是16位的整型指针。你应该也会注意到len1和data_size的不同，len1表示解码使用的数据的在包中的大小，data_size表示实际返回的原始音频数据的大小。
+
+\marginpar{\rule[-15mm]{0.4mm}{15mm}}{\textbf{备注：}\small 为什么使用avcodec_decode_audio2()？因为曾经有一个avcodec_decode_audio()，但现在被废弃了。这个新的函数通过data_size变量来算出从audio_buf读取多少数据。}
 
 当我们得到一些数据的时候，我们立刻返回来看一下是否仍然需要从队列中得到更加多的数据或者我们已经完成了。如果我们仍然有更加多的数据要处理，我们把它保存到下一次。如果我们完成了一个包的处理，我们最后要释放它。
 
@@ -343,6 +345,6 @@ gcc -o tutorial03 tutorial03.c -lavutil -lavformat -lavcodec -lz -lm \
 `sdl-config --cflags --libs`
 \end{lstlisting}
 
-啊哈！视频虽然还是像原来那样快，但是声音可以正常播放了。这是为什么呢？因为声音信息中的采样率－－虽然我们把声音数据尽可能快的填充到声卡缓冲中，但是声音设备却会按照原来指定的采样率来进行播放。
+啊哈！视频虽然还是像原来那样快，但是音频可以正常播放了。这是为什么呢？因为音频信息中带有采样率信息——虽然我们把音频数据尽可能快的填充到声卡缓冲中，但是音频设备却会按照原来流中指定的采样率来进行播放。
 
-我们几乎已经准备好来开始同步音频和视频了，但是首先我们需要的是一点程序的组织。用队列的方式来组织和播放音频在一个独立的线程中工作的很好：它使得程序更加更加易于控制和模块化。在我们开始同步音视频之前，我们需要让我们的代码更加容易处理。所以下次要讲的是：创建一个线程。
+我们几乎已经准备好来开始同步音频和视频了，但是首先我们需要一些程序的梳理工作。用队列来处理音频和在独立的线程中播放音频的方法效果很好：它使得程序更加更加易于控制和模块化。在我们开始同步音视频之前，我们需要让我们的代码更加易于处理。所以下次要讲的是：创建线程。

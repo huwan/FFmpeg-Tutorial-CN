@@ -1,7 +1,7 @@
 ﻿%编译环境：Windows 7+CTeX_2.9.2.164_Full+XeLaTeX
 %文档编码：UTF-8
 \documentclass[12pt,a4paper,landscape,fancyhdr,fntef,oneside]{ctexbook}
-%\usepackage[boldfont,slantfont,CJKaddspaces,CJKchecksingle]{xeCJK} 	
+%\usepackage[boldfont,slantfont,CJKaddspaces,CJKchecksingle]{xeCJK}
 \setCJKmainfont[BoldFont={STZhongsong}, ItalicFont={Adobe Kaiti Std}]{SimSun}
 \setCJKmonofont{Adobe Fangsong Std}
 \setCJKfamilyfont{song}{Adobe Song Std}
@@ -14,24 +14,24 @@
 \usepackage{fancyvrb}
 \usepackage{geometry}
 \usepackage{underscore} %处理下划线（如变量名称中带下划线）
-\usepackage{amsmath,amsfonts,amssymb}	% Math packages
+\usepackage{amsmath,amsfonts,amssymb}   % Math packages
 \usepackage{tikz}
 \usepackage{tabularx}
 \usepackage[CJKbookmarks, colorlinks, bookmarksnumbered=true,pdfstartview=FitH,linkcolor=black,citecolor=black]{hyperref}
 
-\usepackage{shortvrb}
-\MakeShortVerb{\|}
+%\usepackage{shortvrb}
+%\MakeShortVerb{\|}
 
 \usepackage{graphicx}
 % 设置图形文件的搜索路径
 \graphicspath{{chapter/}{figure/}}
 
 
-\newcommand\cs{
-\begin{center}
-  \S
-\end{center}
-}
+%\newcommand\cs{
+%\begin{center}
+%  \S
+%\end{center}
+%}
 
 \DefineVerbatimEnvironment{code}{Verbatim}%
   {frame=lines,framerule=0.5mm,rulecolor=\color{black},%
@@ -58,7 +58,7 @@ xleftmargin=2em,
 xrightmargin=2em
 }
 
-\CTEXsetup[name={指导,}]{chapter}
+\CTEXsetup[name={教程,}]{chapter}
 \CTEXsetup[number={\arabic{chapter}}]{chapter}
 \setcounter{chapter}{0}%-1:从0开始编号
 \renewcommand\thesection{\arabic{section}}
@@ -66,10 +66,10 @@ xrightmargin=2em
 
 %%%%% Definitions
 %%% Define a new command that prints the title only
-\makeatletter							% Begin definition
-\def\printtitle{%						% Define command: \printauthor
-    {\huge {\@title}\par}}		% Typesetting
-\makeatother							% End definition
+\makeatletter                           % Begin definition
+\def\printtitle{%                       % Define command: \printauthor
+    {\huge {\@title}\par}}      % Typesetting
+\makeatother                            % End definition
 
 \title{
 \hfill{\small \textbf{How to Write a Video Player in
@@ -79,14 +79,14 @@ Less Than 1000 Lines}}\\
 \hfill {\large\kaishu 中文版}}
 
 %%% Define a new command that prints the author(s) only
-\makeatletter							% Begin definition
-\def\printauthor{%					% Define command: \printtitle
-    {\large \@author}}				% Typesetting
-\makeatother							% End definition
+\makeatletter                           % Begin definition
+\def\printauthor{%                  % Define command: \printtitle
+    {\large \@author}}              % Typesetting
+\makeatother                            % End definition
 
 \author{
-		\hfill Stephen Dranger \quad 著\\	
-		\hfill 不详\quad 译\\	
+        \hfill Stephen Dranger \quad 著\\
+        \hfill 不详\quad 译\\
 }
 
 \renewcommand\maketitle{%
@@ -95,15 +95,15 @@ Less Than 1000 Lines}}\\
   %%% Top of the page: Author, Title and Abstact
 
 %\begin{minipage}{0.48\linewidth}
-	
-	%\vspace{.2\textheight}
-	\includegraphics[height=0.1314\textheight]{FFmpegnewlogo.png}\\	%Nekomata.jpg
+
+    %\vspace{.2\textheight}
+    \includegraphics[height=0.1314\textheight]{FFmpegnewlogo.png}\\ %Nekomata.jpg
 
 %\end{minipage} %\hspace{0pt}
 %
 %\begin{minipage}{0.02\linewidth}
-%	\vspace{.2\textheight}
-%	\rule{3pt}{0.6\textheight}
+%   \vspace{.2\textheight}
+%   \rule{3pt}{0.6\textheight}
 %\end{minipage} %\hspace{0pt}
 %
 \begin{minipage}{\linewidth}
@@ -114,7 +114,7 @@ Less Than 1000 Lines}}\\
 \printauthor
 \end{flushleft}
 \end{minipage}
-%\vspace{20pt}		% Add some vertical spacing to seperate the abstract from the rest of the article
+%\vspace{20pt}      % Add some vertical spacing to seperate the abstract from the rest of the article
 \clearpage}
 \renewcommand\contentsname{目\hspace{2em}录}
 
@@ -126,7 +126,9 @@ Less Than 1000 Lines}}\\
 {\hfil \huge \textbf{前\hspace{2em}言}}\par
 \vspace{.1\textheight}
 
-教程英文原文由Stephen Dranger\footnote{dranger@gmail.com} 写成，并发布在http://dranger.com/ffmpeg/ffmpeg.html，中文版原始翻译出处不详，本文档参考百度文库http://wenku.baidu.com/view/2a30ffef0975f46527d3e1ac.html 版本进行校正和重排。教程中有些内容已经过时了，代码中使用的API 有些已经被FFmpeg废弃了，不过有一些开发者更新了教程的代码\footnote{https://github.com/chelyaev/ffmpeg-tutorial}至最近的FFmpeg版本，因此用来作为开发者的入门教程仍不失其价值。
+教程英文原文由Stephen Dranger\footnote{dranger@gmail.com} 写成，并发布在http://dranger.com/ffmpeg/ffmpeg.html，中文版原始翻译出处不详，本文档参考百度文库中的\href{http://wenku.baidu.com/view/2a30ffef0975f46527d3e1ac.html }{翻译版本}及部分其它译本进行校正和重排。正如原文作者在教程开始部分指出的，教程中有些内容已经过时了，教程提供的代码中使用的API 有些已经被FFmpeg 废弃了。不过好在有开发者更新教程的代码\footnote{https://github.com/chelyaev/ffmpeg-tutorial}到比较新的FFmpeg版本\footnote{ffmpeg version N-50314-gf6fff8e}，因此文章作为开发者的入门教程还是很有参考价值。
+
+本文档LaTeX源码和PDF文档发布在Github：https://github.com/mengyingchina/FFmpeg-Tutorial-CN ，你可以在这里获取最新更新，如果有发现文字或翻译错误，请提交到\href{https://github.com/mengyingchina/FFmpeg-Tutorial-CN/issues}{FFmpeg-Tutorial-CN/issues} 。
 
 \vspace{1em}
 原文的版权声明：

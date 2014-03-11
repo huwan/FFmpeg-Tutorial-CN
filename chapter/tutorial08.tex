@@ -1,9 +1,9 @@
 ﻿\chapter{软件缩放}
 \label{ch8}
 \section{软件缩放库libswscale}
-近来ffmpeg添加了新的接口：libswscale来处理图像缩放。但是在前面我们使用img_convert来把RGB转换成YUV12，我们现在使用新的接口。新接口更加标准和快速，而且我相信里面有了MMX优化代码。换句话说，它是做缩放更好的方式。
+近来ffmpeg添加了新的接口，使用libswscale来处理图像缩放。既然在前面我们使用img_convert来把RGB转换成YUV12，那么我们现在来使用新的接口。新接口更加标准和快速，而且我相信里面有了MMX优化代码。换句话说，它是做缩放更好的方式。
 
-我们将用来缩放的基本函数是sws_scale。但一开始，我们必需建立一个SwsContext的概念。这将让我们进行想要的转换，然后把它传递给sws_scale函数。类似于在SQL 中的预备阶段或者是在Python中编译的规则表达式regexp。要准备这个上下文，我们使用sws_getContext函数，它需要我们源的宽度和高度，我们想要的宽度和高度，源的格式和想要转换成的格式，同时还有一些其它的参数和标志。然后我们像使用img_convert一样来使用sws_scale函数，唯一不同的是我们传递给的是SwsContext：
+我们将用来缩放的基本函数是sws_scale。但一开始，我们必需建立一个SwsContext的结构体。这将让我们进行想要的转换，然后把它传递给sws_scale函数。类似于在SQL 中的预备阶段或者是在Python中编译的规则表达式regexp。要准备这个上下文，我们使用sws_getContext 函数，它需要我们源的宽度和高度，我们想要的宽度和高度，源的格式和想要转换成的格式，同时还有一些其它的参数和标志。然后我们像使用img_convert一样来使用sws_scale函数，唯一不同的是我们传递给的是SwsContext：
 \begin{lstlisting}
 #include <ffmpeg/swscale.h> // include the header!
 
@@ -46,10 +46,12 @@ int queue_picture(VideoState *is, AVFrame *pFrame, double pts) {
               pict.data, pict.linesize);
 \end{lstlisting}
 
-我们把新的缩放器放到了合适的位置。希望这会让你知道libswscale 能做什么。就这样，我们做完了！编译我们的播放器：
+我们把新的缩放器放到了合适的位置。希望这会让你知道libswscale 能做什么。
+
+就这样，我们做完了！编译我们的播放器：
 \begin{lstlisting}
 gcc -o tutorial08 tutorial08.c -lavutil -lavformat -lavcodec -lz -lm `sdl-config --cflags --libs`
 \end{lstlisting}
 享受我们用C写的少于1000行的电影播放器吧。
 
-当然，还有很多事情要做。
+当然，也还是有很多我们没太关注的东西可以添加进来的。
