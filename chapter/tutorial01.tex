@@ -122,7 +122,7 @@ buffer=(uint8_t *)av_malloc(numBytes*sizeof(uint8_t));
 
 av_malloc是ffmpeg的malloc，用来实现一个简单的malloc的包装，这样来保证内存地址是对齐的（4字节对齐或者2字节对齐）。它并不能保护你不被内存泄漏，重复释放或者其它malloc的问题所困扰。
 
-现在我们使用avpicture_fill来把帧和我们新申请的内存来结合。关于AVPicture的结成：AVPicture结构体是AVFrame结构体的子集——AVFrame 结构体的开始部分与AVPicture结构体是一样的。
+现在我们使用avpicture_fill来把帧和我们新申请的内存来结合。关于AVPicture的结构：AVPicture结构体是AVFrame结构体的子集——AVFrame 结构体的开始部分与AVPicture结构体是一样的。
 
 \begin{lstlisting}
 // Assign appropriate parts of buffer to image planes in pFrameRGB
